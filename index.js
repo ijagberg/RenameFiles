@@ -8,18 +8,14 @@ program
     .option('-r, --restore', 'Undo a previously performed rename operation (requires a .rename-files-restore file in the current directory)')
     .parse(process.argv);
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
 
-const start = async function () {
+async function start() {
     if (!program.restore) {
-        // Rename every file
         await renameAll();
     } else if (program.restore) {
         await restoreAll();
     }
+    console.log('Bye');
 }
 
 function shuffle(array) {
@@ -36,49 +32,85 @@ async function isDirectory(file) {
     return stats.isDirectory();
 }
 
+async function prompt(query) {
+    var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    var f = async function () {
+        return new Promise(function (resolve, reject) {
+            rl.question(query, resolve);
+        });
+    };
+    var answer = await f();
+    rl.close();
+    return answer;
+}
+
 async function renameAll() {
-    // Get files from current directory
-    var renameFilesRestore = [];
-    var files = await fse.readdir('.');
-    shuffle(files);
-    for (var i in files) {
-        var file = files[i];
-        if (!await isDirectory(file)) {
-            // File is not a directory, so it should be renamed
-            var oldFileName = file;
-            if (oldFileName == '.rename-files-restore') {
-                // Special case for restoration file
-                continue;
-            }
+    try {
+        // Get files from current directory
+        var renameFilesRestore = [];
+        var files = await fse.readdir('.');
+        shuffle(files);
+        for (var i in files) {
+            var file = files[i];
+            if (!await isDirectory(file)) {
+                // File is not a directory, so it should be renamed
+                var oldFileName = file;
+                if (oldFileName == '.rename-files-restore') {
+                    // Special case for restoration file
+                    continue;
+                }
 
-            var splitString = oldFileName.split('.');
-            var fileType = '';
-            if (splitString.length > 1) {
-                fileType = splitString[splitString.length-1];
-            }
-            var newFileName = i.toString() + '.' + fileType;
+                var splitString = oldFileName.split('.');
+                var fileType = '';
+                if (splitString.length > 1) {
+                    fileType = splitString[splitString.length - 1];
+                }
+                var newFileName = i.toString() + '.' + fileType;
 
-            renameFilesRestore.push({
-                newFileName: newFileName,
-                oldFileName: oldFileName
-            });
+                renameFilesRestore.push({
+                    newFileName: newFileName,
+                    oldFileName: oldFileName
+                });
+            }
         }
-    }
-    console.log('The following rename-operation will be performed: ');
-    console.log(renameFilesRestore);
-    rl.question('Y/N: ', async (response) => {
-        if (response == 'Y') {
+        console.log('The following rename operation will be performed: ');
+        console.log(renameFilesRestore);
+        var answer = await prompt('Y/N: ');
+        if (answer == 'Y') {
             console.log('Performing rename...');
             await fse.writeJson('./.rename-files-restore', renameFilesRestore);
             for (var i in renameFilesRestore) {
                 var entry = renameFilesRestore[i];
                 await fse.move(entry["oldFileName"], entry["newFileName"]);
             }
-        } else {
-            console.log('Ok, cancelling');
         }
-        rl.close();
-    });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+
+async function restoreAll() {
+    try {
+        var renameFilesRestore = await fse.readJSON('./.rename-files-restore');
+        console.log('The following restore operation will be performed: ');
+        console.log(renameFilesRestore);
+        var answer = await prompt('Y/N: ');
+        if (answer == 'Y') {
+            console.log('Performing restore...');
+            for (var i in renameFilesRestore) {
+                var entry = renameFilesRestore[i];
+                await fse.move(entry["newFileName"], entry["oldFileName"]);
+            }
+            console.log('Restoration complete, removing .rename-files-restore...');
+            await fse.remove('./.rename-files.restore');
+        }
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 start();
