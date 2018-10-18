@@ -10,10 +10,11 @@ program
 
 
 async function start() {
+    var files = await getFilesInCurrentDirectory();
     if (!program.restore) {
-        await renameAll();
+        await renameAll(files);
     } else if (program.restore) {
-        await restoreAll();
+        await restoreAll(files);
     }
     console.log('Bye');
 }
@@ -24,6 +25,22 @@ function shuffle(array) {
         var temp = array[i];
         array[i] = array[j];
         array[j] = temp;
+    }
+}
+
+async function getFilesInCurrentDirectory() {
+    try {
+        var filesAndDirs = await fse.readdir('.');
+        var files = [];
+        for (var i in filesAndDirs) {
+            var fileDir = filesAndDirs[i];
+            if (!await isDirectory(fileDir)) {
+                files.push(fileDir);
+            }
+        }
+        return files;
+    } catch (err) {
+        console.error(err);
     }
 }
 
@@ -47,34 +64,28 @@ async function prompt(query) {
     return answer;
 }
 
-async function renameAll() {
+async function renameAll(files) {
     try {
         // Get files from current directory
-        var renameFilesRestore = [];
-        var files = await fse.readdir('.');
-        shuffle(files);
         for (var i in files) {
             var file = files[i];
-            if (!await isDirectory(file)) {
-                // File is not a directory, so it should be renamed
-                var oldFileName = file;
-                if (oldFileName == '.rename-files-restore') {
-                    // Special case for restoration file
-                    continue;
-                }
-
-                var splitString = oldFileName.split('.');
-                var fileType = '';
-                if (splitString.length > 1) {
-                    fileType = splitString[splitString.length - 1];
-                }
-                var newFileName = i.toString() + '.' + fileType;
-
-                renameFilesRestore.push({
-                    newFileName: newFileName,
-                    oldFileName: oldFileName
-                });
+            var oldFileName = file;
+            if (oldFileName == '.rename-files-restore') {
+                // Special case for restoration file
+                continue;
             }
+
+            var splitString = oldFileName.split('.');
+            var fileType = '';
+            if (splitString.length > 1) {
+                fileType = splitString[splitString.length - 1];
+            }
+            var newFileName = i.toString() + '.' + fileType;
+
+            renameFilesRestore.push({
+                newFileName: newFileName,
+                oldFileName: oldFileName
+            });
         }
         console.log('The following rename operation will be performed: ');
         console.log(renameFilesRestore);
