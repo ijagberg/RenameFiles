@@ -2,7 +2,6 @@
 
 const fse = require('fs-extra');
 const readline = require('readline');
-const crypto = require('crypto');
 var program = require('commander');
 
 
