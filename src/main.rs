@@ -1,5 +1,6 @@
 extern crate clap;
 use clap::{App, Arg};
+use std::fs;
 
 fn main() {
     let matches = App::new("RenameFiles")
