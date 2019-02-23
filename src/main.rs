@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate uuid;
 use clap::{App, Arg};
+use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 use std::result::Result;
@@ -12,6 +13,13 @@ use uuid::Uuid;
 
 struct Config {
     suppress: bool,
+    verbose: bool,
+}
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Suppress: {}, Verbose: {}", self.suppress, self.verbose)
+    }
 }
 
 fn main() {
@@ -23,15 +31,29 @@ fn main() {
         .arg(
             Arg::with_name("suppress")
                 .short("s")
-                .help("Suppress prompt for confirmation"),
+                .long("suppress")
+                .help("Suppress prompts for confirmation"),
         )
-        .arg(Arg::with_name("files").required(true).min_values(1))
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .long("--verbose")
+                .help("Display verbose output of renamings"),
+        )
+        .arg(
+            Arg::with_name("files")
+                .required(true)
+                .min_values(1)
+                .help("Files to rename"),
+        )
         .get_matches();
 
     let config = Config {
         suppress: matches.is_present("suppress"),
+        verbose: matches.is_present("verbose"),
     };
     let files: Vec<&str> = matches.values_of("files").unwrap().collect();
+    println!("{}", config);
 
     run(config, files);
 }
@@ -46,7 +68,7 @@ fn run(config: Config, files: Vec<&str>) {
     rename_files(config, files);
 }
 
-fn rename_files(_config: Config, files: Vec<&str>) {
+fn rename_files(config: Config, files: Vec<&str>) {
     for file in files {
         if file.starts_with('.') {
             continue;
@@ -60,7 +82,7 @@ fn rename_files(_config: Config, files: Vec<&str>) {
             }
         };
         if metadata.is_file() {
-            match rename_file(PathBuf::from(file)) {
+            match rename_file(&config, PathBuf::from(file)) {
                 Ok(()) => {}
                 Err(e) => eprintln!("Error for file {}: {}", file, e),
             }
@@ -68,18 +90,20 @@ fn rename_files(_config: Config, files: Vec<&str>) {
     }
 }
 
-fn rename_file(current_path: PathBuf) -> Result<(), std::io::Error> {
+fn rename_file(config: &Config, current_path: PathBuf) -> Result<(), std::io::Error> {
     let random_name = Uuid::new_v4().to_string();
     let mut new_path = PathBuf::from(current_path.parent().unwrap());
     new_path.push(random_name);
     new_path.set_extension(current_path.extension().unwrap());
     match fs::rename(&current_path, new_path.clone()) {
         Ok(()) => {
-            println!(
-                "{} -> {}",
-                current_path.to_str().unwrap(),
-                new_path.to_str().unwrap()
-            );
+            if config.verbose {
+                println!(
+                    "{} -> {}",
+                    current_path.to_str().unwrap(),
+                    new_path.to_str().unwrap()
+                );
+            }
             Ok(())
         }
         Err(e) => Err(e),
