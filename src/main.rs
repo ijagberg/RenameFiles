@@ -74,13 +74,8 @@ fn rename_files(config: Config, files: Vec<&str>) {
             continue;
         }
         // rename single file
-        let metadata = match fs::metadata(file) {
-            Ok(metadata) => metadata,
-            Err(e) => {
-                eprintln!("{}", e);
-                return;
-            }
-        };
+        let metadata =
+            fs::metadata(file).expect(&format!("Could not retrieve metadata for file: {}", file));
         if metadata.is_file() {
             match rename_file(&config, PathBuf::from(file)) {
                 Ok(()) => {}
