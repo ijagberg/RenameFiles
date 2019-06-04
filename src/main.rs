@@ -1,25 +1,13 @@
-extern crate clap;
-extern crate uuid;
 use clap::{App, Arg};
-use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 use std::result::Result;
 use uuid::Uuid;
 
-// program
-//     .option('-s, --suppress', 'Suppress prompt for confirmation')
-//     .parse(process.argv);
-
+#[derive(Debug)]
 struct Config {
     suppress: bool,
     verbose: bool,
-}
-
-impl fmt::Display for Config {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Suppress: {}, Verbose: {}", self.suppress, self.verbose)
-    }
 }
 
 fn main() {
@@ -53,7 +41,6 @@ fn main() {
         verbose: matches.is_present("verbose"),
     };
     let files: Vec<&str> = matches.values_of("files").unwrap().collect();
-    println!("{}", config);
 
     run(config, files);
 }
@@ -61,8 +48,21 @@ fn main() {
 fn run(config: Config, files: Vec<&str>) {
     if !config.suppress {
         // print confirmation
-        println!("This will be a confirmation eventually");
-        return;
+        println!(
+            "Are you sure you want to rename {} files? (yes/NO)",
+            files.len()
+        );
+        let user_answer = {
+            let mut buffer_string = String::new();
+            std::io::stdin()
+                .read_line(&mut buffer_string)
+                .expect("could not read line");
+            buffer_string.trim().to_string()
+        };
+
+        if user_answer.to_lowercase() != "yes" {
+            return;
+        }
     }
 
     rename_files(config, files);
@@ -74,8 +74,8 @@ fn rename_files(config: Config, files: Vec<&str>) {
             continue;
         }
         // rename single file
-        let metadata =
-            fs::metadata(file).expect(&format!("Could not retrieve metadata for file: {}", file));
+        let metadata = fs::metadata(file)
+            .unwrap_or_else(|_| panic!("could not retrieve metadata for file: {}", file));
         if metadata.is_file() {
             match rename_file(&config, PathBuf::from(file)) {
                 Ok(()) => {}

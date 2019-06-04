@@ -1,3 +1,5 @@
 .rename-files-restore
 /target
 **/*.rs.bk
+.idea
+release.sh
