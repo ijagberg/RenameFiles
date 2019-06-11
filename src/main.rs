@@ -69,6 +69,7 @@ fn run(config: Config, files: Vec<&str>) {
 }
 
 fn rename_files(config: Config, files: Vec<&str>) {
+    let mut files_count = 0;
     for file in files {
         if file.starts_with('.') {
             continue;
@@ -78,10 +79,14 @@ fn rename_files(config: Config, files: Vec<&str>) {
             .unwrap_or_else(|_| panic!("could not retrieve metadata for file: {}", file));
         if metadata.is_file() {
             match rename_file(&config, PathBuf::from(file)) {
-                Ok(()) => {}
+                Ok(()) => files_count += 1,
                 Err(e) => eprintln!("Error for file {}: {}", file, e),
             }
         }
+    }
+
+    if config.verbose {
+        println!("Successfully renamed {} files.", files_count);
     }
 }
 
