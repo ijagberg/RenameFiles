@@ -15,7 +15,7 @@ fn main() {
     let matches = App::new("RenameFiles")
         .version("1.0")
         .author("Isak Jägberg <ijagberg@gmail.com>")
-        .about("Tool for renaming directories")
+        .about("Tool for randomly renaming multiple files at once")
         .arg(
             Arg::with_name("suppress")
                 .short("s")
